@@ -10,6 +10,8 @@ define void @deinterleave4(ptr %src) {
 ; CHECK-NEXT:    [[TMP2:%.*]] = extractvalue { <vscale x 4 x i32>, <vscale x 4 x i32>, <vscale x 4 x i32>, <vscale x 4 x i32> } [[LDN]], 1
 ; CHECK-NEXT:    [[TMP3:%.*]] = extractvalue { <vscale x 4 x i32>, <vscale x 4 x i32>, <vscale x 4 x i32>, <vscale x 4 x i32> } [[LDN]], 2
 ; CHECK-NEXT:    [[TMP4:%.*]] = extractvalue { <vscale x 4 x i32>, <vscale x 4 x i32>, <vscale x 4 x i32>, <vscale x 4 x i32> } [[LDN]], 3
+; CHECK-NEXT:    [[SUM:%.*]] = add <vscale x 4 x i32> [[TMP1]], [[TMP2]]
+; CHECK-NEXT:    [[SUB:%.*]] = sub <vscale x 4 x i32> [[TMP3]], [[TMP4]]
 ; CHECK-NEXT:    ret void
 ;
 
@@ -23,6 +25,8 @@ define void @deinterleave4(ptr %src) {
   %deinterleave_half2 = tail call { <vscale x 4 x i32>, <vscale x 4 x i32> } @llvm.vector.deinterleave2.nxv8i32(<vscale x 8 x i32> %4)
   %7 = extractvalue { <vscale x 4 x i32>, <vscale x 4 x i32> } %deinterleave_half2, 0
   %8 = extractvalue { <vscale x 4 x i32>, <vscale x 4 x i32> } %deinterleave_half2, 1
+  %sum = add <vscale x 4 x i32> %5, %7
+  %sub = sub <vscale x 4 x i32> %6, %8
   ret void
 }
 
@@ -81,8 +85,8 @@ define void @mix_deinterleave4_deinterleave2(ptr %src) {
 ; CHECK-NEXT:    [[TMP3:%.*]] = extractvalue { <vscale x 4 x i32>, <vscale x 4 x i32>, <vscale x 4 x i32>, <vscale x 4 x i32> } [[LDN]], 2
 ; CHECK-NEXT:    [[TMP4:%.*]] = extractvalue { <vscale x 4 x i32>, <vscale x 4 x i32>, <vscale x 4 x i32>, <vscale x 4 x i32> } [[LDN]], 3
 ; CHECK-NEXT:    [[LDN1:%.*]] = call { <vscale x 4 x i32>, <vscale x 4 x i32> } @llvm.aarch64.sve.ld2.sret.nxv4i32(<vscale x 4 x i1> shufflevector (<vscale x 4 x i1> insertelement (<vscale x 4 x i1> poison, i1 true, i64 0), <vscale x 4 x i1> poison, <vscale x 4 x i32> zeroinitializer), ptr [[SRC]])
-; CHECK-NEXT:    [[LD2_1:%.*]] = extractvalue { <vscale x 4 x i32>, <vscale x 4 x i32> } [[LDN1]], 0
-; CHECK-NEXT:    [[LD2_2:%.*]] = extractvalue { <vscale x 4 x i32>, <vscale x 4 x i32> } [[LDN1]], 1
+; CHECK-NEXT:    [[TMP5:%.*]] = extractvalue { <vscale x 4 x i32>, <vscale x 4 x i32> } [[LDN1]], 0
+; CHECK-NEXT:    [[TMP6:%.*]] = extractvalue { <vscale x 4 x i32>, <vscale x 4 x i32> } [[LDN1]], 1
 ; CHECK-NEXT:    ret void
 ;
 
@@ -97,8 +101,8 @@ define void @mix_deinterleave4_deinterleave2(ptr %src) {
   %7 = extractvalue { <vscale x 4 x i32>, <vscale x 4 x i32> } %deinterleave_half2, 0
   %8 = extractvalue { <vscale x 4 x i32>, <vscale x 4 x i32> } %deinterleave_half2, 1
 
-  %load1 = load <vscale x 8 x i32>, ptr %src, align 4
-  %deinterleave_src2 = tail call { <vscale x 4 x i32>, <vscale x 4 x i32> } @llvm.vector.deinterleave2.nxv16i32(<vscale x 8 x i32> %load1)
+  %load2 = load <vscale x 8 x i32>, ptr %src, align 4
+  %deinterleave_src2 = tail call { <vscale x 4 x i32>, <vscale x 4 x i32> } @llvm.vector.deinterleave2.nxv16i32(<vscale x 8 x i32> %load2)
   %ld2_1 = extractvalue { <vscale x 4 x i32>, <vscale x 4 x i32> } %deinterleave_src2, 0
   %ld2_2 = extractvalue { <vscale x 4 x i32>, <vscale x 4 x i32> } %deinterleave_src2, 1
   ret void
