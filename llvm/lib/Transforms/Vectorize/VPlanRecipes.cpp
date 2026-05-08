@@ -1496,6 +1496,7 @@ bool VPInstruction::usesFirstPartOnly(const VPValue *Op) const {
 void VPInstruction::dump() const {
   VPSlotTracker SlotTracker(getParent()->getPlan());
   printRecipe(dbgs(), "", SlotTracker);
+  dbgs() << "\n";
 }
 
 void VPInstruction::printRecipe(raw_ostream &O, const Twine &Indent,
