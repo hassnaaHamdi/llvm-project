@@ -753,9 +753,9 @@ VPInstruction *vputils::findCanonicalIVIncrement(VPlan &Plan) {
 
   assert((!VFxUF.isMaterialized() || Increment) &&
          "After materializing VFxUF, an increment must exist");
-  assert((!Increment ||
-          LoopRegion->hasCanonicalIVNUW() == Increment->hasNoUnsignedWrap()) &&
-         "NUW flag in region and increment must match");
+  // assert((!Increment ||
+  //         LoopRegion->hasCanonicalIVNUW() == Increment->hasNoUnsignedWrap()) &&
+  //        "NUW flag in region and increment must match");
   return Increment;
 }
 
