@@ -326,15 +326,15 @@ def parseOptionsAndInitTestdirs():
     if args.out_of_tree_debugserver:
         lldbtest_config.out_of_tree_debugserver = args.out_of_tree_debugserver
 
-    # Set SDKROOT if we are using an Apple SDK
     if args.sysroot:
         configuration.sdkroot = args.sysroot
-    elif platform_system == "Darwin" and args.apple_sdk:
+    elif platform_system == "Darwin":
+        sdk = args.apple_sdk if args.apple_sdk else "macosx"
         configuration.sdkroot = seven.get_command_output(
-            'xcrun --sdk "%s" --show-sdk-path 2> /dev/null' % (args.apple_sdk)
+            'xcrun --sdk "%s" --show-sdk-path 2> /dev/null' % (sdk)
         )
         if not configuration.sdkroot:
-            logging.error("No SDK found with the name %s; aborting...", args.apple_sdk)
+            logging.error('xcrun found no SDK for "%s"', sdk)
             sys.exit(-1)
 
     if args.triple:
@@ -449,6 +449,8 @@ def parseOptionsAndInitTestdirs():
         configuration.lldb_platform_available_ports = args.lldb_platform_available_ports
     if platform_system == "Darwin" and args.apple_sdk:
         configuration.apple_sdk = args.apple_sdk
+    if args.timeout:
+        configuration.timeout = args.timeout
     if args.test_build_dir:
         configuration.test_build_dir = args.test_build_dir
     if args.lldb_module_cache_dir:
@@ -503,6 +505,17 @@ def registerFaulthandler():
     # faulthandler.register is not available on Windows.
     if getattr(faulthandler, "register", None):
         faulthandler.register(signal.SIGTERM, chain=True)
+
+    if sys.platform != "win32":
+        return
+
+    # Dump every thread's stack shortly before lit's own per-test timeout would
+    # kill the process.
+    if configuration.timeout <= 0:
+        return
+
+    secs = max(1.0, configuration.timeout * 0.9)
+    faulthandler.dump_traceback_later(secs, exit=False)
 
 
 def setupSysPath():
@@ -1254,6 +1267,12 @@ def run_suite():
             ).run(configuration.suite)
 
     configuration.failed = not result.wasSuccessful()
+
+    if getattr(result, "skipped", None):
+        sys.stderr.write(
+            "Skip breakdown (unsupported=%d, skipped=%d)\n"
+            % (result.countUnsupported(), result.countSkipped())
+        )
 
     if configuration.sdir_has_content and configuration.verbose:
         sys.stderr.write(
