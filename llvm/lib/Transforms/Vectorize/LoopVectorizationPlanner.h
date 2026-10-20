@@ -885,9 +885,6 @@ class LoopVectorizationPlanner {
   /// The legality analysis.
   LoopVectorizationLegality *Legal;
 
-  /// The profitability analysis. Cleared after making cost based decisions.
-  std::unique_ptr<LoopVectorizationCostModel> CM;
-
   /// VF selection state independent of cost-modeling decisions.
   VFSelectionContext &Config;
 
@@ -930,30 +927,21 @@ public:
   LoopVectorizationPlanner(
       Loop *L, LoopInfo *LI, DominatorTree *DT, const TargetLibraryInfo *TLI,
       const TargetTransformInfo &TTI, LoopVectorizationLegality *Legal,
-      std::unique_ptr<LoopVectorizationCostModel> CM,
       VFSelectionContext &Config, InterleavedAccessInfo &IAI,
       PredicatedScalarEvolution &PSE, OptimizationRemarkEmitter *ORE,
       std::function<const BranchProbabilityInfo &()> GetBPI);
 
   ~LoopVectorizationPlanner();
 
-  /// Return the cost model. Must not be called after clearCostModel().
-  LoopVectorizationCostModel &getCostModel() {
-    assert(CM && "Cost model has already been cleared");
-    return *CM;
-  }
-
-  /// Destroy the cost model.
-  void clearCostModel();
-
   /// Build VPlans for the specified \p UserVF and \p UserIC if they are
   /// non-zero or all applicable candidate VFs otherwise. If vectorization and
   /// interleaving should be avoided up-front, no plans are generated.
-  void plan(ElementCount UserVF, unsigned UserIC);
+  void plan(ElementCount UserVF, unsigned UserIC,
+            LoopVectorizationCostModel &CM);
 
   /// Build VPlan for the forced epilogue VF. If vectorization and tail-folding
   /// should be avoided up-front, no tail-folded plans are generated.
-  bool planForEpilogueTF();
+  bool planForEpilogueTF(LoopVectorizationCostModel &CM);
 
   /// Return the VPlan for \p VF. At the moment, there is always a single VPlan
   /// for each VF.
@@ -962,14 +950,16 @@ public:
   /// Compute and return the most profitable vectorization factor and the
   /// corresponding best VPlan. Also collect all profitable VFs in
   /// ProfitableVFs.
-  std::pair<VectorizationFactor, VPlan *> computeBestVF();
+  std::pair<VectorizationFactor, VPlan *>
+  computeBestVF(LoopVectorizationCostModel &CM);
 
   /// \return The desired interleave count.
   /// If interleave count has been specified by metadata it will be returned.
   /// Otherwise, the interleave count is computed and returned. VF and LoopCost
   /// are the selected vectorization factor and the cost of the selected VF.
   unsigned selectInterleaveCount(VPlan &Plan, ElementCount VF,
-                                 InstructionCost LoopCost);
+                                 InstructionCost LoopCost,
+                                 LoopVectorizationCostModel &CM);
 
   /// Generate the IR code for the vectorized loop captured in VPlan \p BestPlan
   /// according to the best selected \p VF and  \p UF.
@@ -1020,7 +1010,8 @@ public:
                                                 bool ScalarEpilogueAllowed);
 
   /// Emit remarks for recipes with invalid costs in the available VPlans.
-  void emitInvalidCostRemarks(OptimizationRemarkEmitter *ORE);
+  void emitInvalidCostRemarks(OptimizationRemarkEmitter *ORE,
+                              LoopVectorizationCostModel &CM);
 
   /// Create a check to \p Plan to see if the vector loop should be executed
   /// based on its trip count. When \p TailFoldedEpilogue is true, the
@@ -1078,7 +1069,8 @@ private:
   /// final reduction results. Add Select recipes to the latch block when
   /// folding tail, to feed ComputeReductionResult with the last or penultimate
   /// iteration values according to the header mask.
-  void addReductionResultComputation(VPlanPtr &Plan, ElementCount MinVF);
+  void addReductionResultComputation(VPlanPtr &Plan, ElementCount MinVF,
+                                     LoopVectorizationCostModel &CM);
 
   /// Returns true if the per-lane cost of VectorizationFactor A is lower than
   /// that of B.
