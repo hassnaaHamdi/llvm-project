@@ -631,13 +631,17 @@ struct VectorizationFactor {
   /// to runtime checks.
   ElementCount MinProfitableTripCount;
 
+  /// HasTailFolded status of the VPlan with that vector width.
+  bool HasTailFolded;
+
   VectorizationFactor(ElementCount Width, InstructionCost Cost,
-                      InstructionCost ScalarCost)
-      : Width(Width), Cost(Cost), ScalarCost(ScalarCost) {}
+                      InstructionCost ScalarCost, bool HasTailFolded)
+      : Width(Width), Cost(Cost), ScalarCost(ScalarCost),
+        HasTailFolded(HasTailFolded) {}
 
   /// Width 1 means no vectorization, cost 0 means uncomputed cost.
   static VectorizationFactor Disabled() {
-    return {ElementCount::getFixed(1), 0, 0};
+    return {ElementCount::getFixed(1), 0, 0, false};
   }
 };
 
@@ -914,6 +918,9 @@ class LoopVectorizationPlanner {
   /// Profitable vector factors.
   SmallVector<VectorizationFactor, 8> ProfitableVFs;
 
+  /// Vector factors that could be profitable
+  SmallVector<VectorizationFactor, 8> FeasibleVFs;
+
   /// A builder used to construct the current plan.
   VPBuilder Builder;
 
@@ -971,16 +978,19 @@ public:
 
   /// Build VPlan for the forced epilogue VF. If vectorization and tail-folding
   /// should be avoided up-front, no tail-folded plans are generated.
-  bool planForEpilogueTF();
+  bool planForEpilogueTF(ElementCount ForcedVF);
 
-  /// Return the VPlan for \p VF. At the moment, there is always a single VPlan
-  /// for each VF.
-  VPlan &getPlanFor(ElementCount VF) const;
+  /// Return the VPlan for \p VF compatible with \p HasTailFolded. At the
+  /// moment, There could be 2 VPlans with same VFs but different status of
+  /// tail-folding.
+  VPlan &getPlanFor(ElementCount VF, bool HasTailFolded) const;
 
   /// Compute and return the most profitable vectorization factor and the
   /// corresponding best VPlan. Also collect all profitable VFs in
   /// ProfitableVFs.
-  std::pair<VectorizationFactor, VPlan *> computeBestVF();
+  void computeVPlanCosts(LoopVectorizationCostModel &PlanCM);
+
+  std::pair<VectorizationFactor, VPlan *> selectBestVF();
 
   /// \return The desired interleave count.
   /// If interleave count has been specified by metadata it will be returned.
@@ -1019,9 +1029,18 @@ public:
 
   /// Look through the existing plans and return true if we have one with
   /// vectorization factor \p VF.
-  bool hasPlanWithVF(ElementCount VF) const {
-    return any_of(VPlans,
-                  [&](const VPlanPtr &Plan) { return Plan->hasVF(VF); });
+  bool hasPlanWithVF(ElementCount VF, bool HasTailFolded) const {
+    return any_of(VPlans, [&](const VPlanPtr &Plan) {
+      return Plan->hasVF(VF) && Plan->hasTailFolded() == HasTailFolded;
+    });
+  }
+
+  /// Look through the existing plans and return true if we have one with
+  /// \p HasTailFolded enabled/disabled.
+  bool hasPlanWithTF(bool HasTailFolded) const {
+    return any_of(VPlans, [&](const VPlanPtr &Plan) {
+      return Plan->hasTailFolded() == HasTailFolded;
+    });
   }
 
   /// Test a \p Predicate on a \p Range of VF's. Return the value of applying
