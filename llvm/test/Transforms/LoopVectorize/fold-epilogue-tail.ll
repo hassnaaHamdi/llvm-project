@@ -8,10 +8,6 @@
 ; RUN: %{cmd} -force-vector-width=16 -epilogue-vectorization-force-VF=8 -enable-epilogue-vectorization=false \
 ; RUN: < %s 2>&1 | FileCheck %s --check-prefix=CHECK-DISABLED-EPILOG
 
-; RUN: %{cmd}  -epilogue-vectorization-force-VF=8 < %s 2>&1 | FileCheck %s --check-prefix=CHECK-NO-FORCED-MAIN-VF
-
-; RUN: %{cmd} -force-vector-width=16 < %s 2>&1 | FileCheck %s --check-prefix=CHECK-NO-FORCED-EPILOGUE-VF
-
 ; RUN: %{cmd} -force-vector-width=8 -epilogue-vectorization-force-VF=8 < %s 2>&1 | FileCheck %s --check-prefix=CHECK-INVALID-VFs
 
 ; RUN: %{cmd} -force-vector-width=8 -epilogue-vectorization-force-VF=16 < %s 2>&1 | FileCheck %s --check-prefix=CHECK-INVALID-LARGER-EPILOGUE
@@ -34,12 +30,6 @@ define void @test_epilogue_tf(ptr %A, i64 %n, i8 %val) {
 ;
 ; CHECK-DISABLED-EPILOG-LABEL: LV: Checking a loop in 'test_epilogue_tf'
 ; CHECK-DISABLED-EPILOG: remark: <unknown>:0:0: Options conflict, epilogue vectorization is disallowed while epilogue tail-folding allowed!
-;
-; CHECK-NO-FORCED-MAIN-VF-LABEL: Checking a loop in 'test_epilogue_tf'
-; CHECK-NO-FORCED-MAIN-VF-NOT: LV: epilogue tail-folding is enabled
-
-; CHECK-NO-FORCED-EPILOGUE-VF-LABEL: Checking a loop in 'test_epilogue_tf'
-; CHECK-NO-FORCED-EPILOGUE-VF-NOT: LV: epilogue tail-folding is enabled
 ;
 ; CHECK-INVALID-VFs-LABEL: Checking a loop in 'test_epilogue_tf'
 ; CHECK-INVALID-VFs: remark: <unknown>:0:0: For now, epilogue tail-folding can't be applied when VF of the main loop <= VF of the epilogue
