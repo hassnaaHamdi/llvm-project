@@ -5123,10 +5123,12 @@ void LoopVectorizationPlanner::plan(ElementCount UserVF, unsigned UserIC) {
         // Try to build a tail-folded epilogue Vplan. Otherwise build a regular
         // plan for the epilogue:
         ElementCount EpilogueUserVF = EpilogueVectorizationForceVF;
-        if (EpilogueUserVF.isVector() && (planForEpilogueTF() ||
-            ElementCount::isKnownLT(EpilogueUserVF, UserVF))) {
-          CM->collectNonVectorizedAndSetWideningDecisions(EpilogueUserVF);
-          buildVPlans(*VPlan1, EpilogueUserVF, EpilogueUserVF, *CM);
+        if (EpilogueUserVF.isVector()) {
+          if (!planForEpilogueTF() &&
+              ElementCount::isKnownLT(EpilogueUserVF, UserVF)) {
+            CM->collectNonVectorizedAndSetWideningDecisions(EpilogueUserVF);
+            buildVPlans(*VPlan1, EpilogueUserVF, EpilogueUserVF, *CM);
+          }
         }
         LLVM_DEBUG(dbgs() << "LV: Using user VF " << UserVF << ".\n");
         LLVM_DEBUG(printPlans(dbgs()));
@@ -5228,8 +5230,12 @@ bool LoopVectorizationPlanner::planForEpilogueTF() {
                 EpilogueVectorizationForceVF, EpilogueTfCM);
 
     // Check that a Vplan is successfully built:
-    if (VPlans.size() == NumPlansBefore)
+    if (VPlans.size() == NumPlansBefore) {
+      reportVectorizationInfo("Failed to build tail-folded epilogue VPlan",
+                              "InvalidTailFoldedEpilogue", ORE, OrigLoop);
+
       return false;
+    }
     VPlan &Plan = *VPlans.back();
     assert(Plan.getSingleVF() == EpilogueVectorizationForceVF &&
            Plan.hasTailFolded() &&
