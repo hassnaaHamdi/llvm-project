@@ -707,7 +707,8 @@ bool LoopVectorizationPlanner::isMoreProfitable(const VectorizationFactor &A,
   // so that scalable vectorization is slightly favorable over fixed-width
   // vectorization.
   bool PreferScalable = !TTI.preferFixedOverScalableIfEqualCost() &&
-                        A.Width.isScalable() && !B.Width.isScalable();
+                        A.Width.isScalable() && !B.Width.isScalable() &&
+                        !IsEpilogue;
 
   auto CmpFn = [PreferScalable](const InstructionCost &LHS,
                                 const InstructionCost &RHS) {
