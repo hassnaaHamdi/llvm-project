@@ -3258,13 +3258,13 @@ std::unique_ptr<VPlan> LoopVectorizationPlanner::selectBestEpiloguePlan(
   // Right now if tail-folded epilogue is forced, then we choose the most
   // profitable tail-folded VPlan, if nothing is profitable we fallback to a
   // scalar epilogue.
-  bool SelectTailFoldedVPlan = Opts.epilogue_tail_folding_policy ==
-                                   TailFoldingPolicyTy::PreferFoldTail &&
-                               hasPlanWithTF(/*HasTailFolded*/ true);
+  // bool SelectTailFoldedVPlan = Opts.epilogue_tail_folding_policy ==
+  //                                  TailFoldingPolicyTy::PreferFoldTail &&
+  //                              hasPlanWithTF(/*HasTailFolded*/ true);
   for (auto &NextVF : ProfitableVFs) {
     // Skip candidate VFs without a corresponding VPlan.
-    if (NextVF.HasTailFolded != SelectTailFoldedVPlan)
-      continue;
+    // if (NextVF.HasTailFolded != SelectTailFoldedVPlan)
+    //   continue;
 
     VPlan &CurrentPlan = getPlanFor(NextVF.Width, NextVF.HasTailFolded);
     ElementCount EffectiveVF = GetEffectiveVF(CurrentPlan, NextVF.Width);
@@ -5546,7 +5546,7 @@ void LoopVectorizationPlanner::computeVPlanCosts(
           cost(*P, VF, ConsiderRegPressure ? &RUs[I] : nullptr, PlanCM);
       if (!Cost.isValid())
         continue;
-      VectorizationFactor CurrentFactor(VF, Cost, ScalarCost,
+      VectorizationFactor CurrentFactor(VF, Cost, P->hasTailFolded() ? 0 : ScalarCost,
                                         P->hasTailFolded());
       FeasibleVFs.push_back(CurrentFactor);
     }
